@@ -1,0 +1,94 @@
+<html>
+  <head>
+    <style>
+      body {
+          background: black url("castle.gif") no-repeat;
+          background-size: 900px 600px;
+          color: white;
+      }
+      div {
+          position: absolute;
+      }
+    </style>
+    <script>
+
+      window.onload = function() {
+mm = 256;
+xx = 400;
+xx2 = 1200;
+
+div = [];
+posx = [];
+posy = [];
+posz = []
+velx = [];
+vely = [];
+velz = [];
+
+for (i = 0; i < 800; ++i) {
+  div[i] = document.createElement('div');
+  div[i].appendChild(document.createTextNode("*"));
+  document.body.appendChild(div[i]);
+  posx[i] = Math.random() * mm * 2 - mm;
+  posy[i] = Math.random() * mm * 2 - mm;
+  posz[i] = Math.random() * mm * 2 - mm;
+  velx[i] = 0;
+  vely[i] = 0;
+  velz[i] = 0;
+}
+
+
+window.setInterval(
+  function() {
+    for (i = 0; i < 800; ++i) {
+
+      
+      posx[i] += velx[i];
+      posy[i] += vely[i];
+      posz[i] += velz[i];
+      velx[i] += Math.random() * 2 - 1;
+      vely[i] += Math.random() * 2 - 1;
+      velz[i] += Math.random() * 2 - 1;
+      velx[i] *= 15 / 16;
+			vely[i] *= 15 / 16;
+			velz[i] *= 15 / 16;
+      velx[i] += 0.1;
+      //velx[i] += posz[i] / 8192;
+      //vely[i] += posy[i] * 0.001;
+      //velz[i] -= posx[i] / 4096;
+
+			//r = posx[i] * posx[i] + posy[i] * posy[i] + posz[i] * posz[i];
+      
+/*       if(r >= mm*mm) {
+        posx[i] *= -255 / 256;
+        posy[i] *= -255 / 256;
+        posz[i] *= -255 / 256;
+      }
+       */      
+        //velx[i] -= posx[i] / 16384;
+        //vely[i] -= posy[i] / 16384;
+        //velz[i] -= posz[i] / 16384;
+
+      if (posx[i] > mm) posx[i] -= mm * 2;
+      if (posx[i] < -mm) posx[i] += mm * 2;
+      
+      if (posy[i] > mm) posy[i] -= mm * 2;
+      if (posy[i] < -mm) posy[i] += mm * 2;
+      
+      if (posz[i] > mm) posz[i] *= 255 / 256
+      if (posz[i] < -mm) posz[i] *= 255 / 256;
+       
+      div[i].style.left = Math.trunc(posx[i] * xx2 / (posz[i] + mm * 2)  + xx) + 'px';
+      div[i].style.top = Math.trunc(posy[i] * xx2 / (posz[i] + mm * 2) + xx) + 'px';
+      div[i].style.fontSize = Math.trunc(8000 / (posz[i] + mm * 2)) + "px";
+      div[i].style.opacity = 100 / (posz[i] + mm)
+    }
+  }, 20);
+
+      }
+    </script>
+
+  </head>
+  <body>
+  </body>
+</html>
