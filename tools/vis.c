@@ -21,17 +21,14 @@ void vistable()
     if((i & 15) == 0) printf("\n.byte ");
     if((i & 15) != 0) printf (", ");
     int
-      from_vis = ((i >> 12) & 15) - 4,
-      from_light = (i >> 8) & 15,
-      to_vis = (i >> 4) & 15,
-      to_light = i & 15;
+      from_vis = ((i >> 8) & 31) - 4,
+      to_vis = (i >> 4) & 15;
 
-    int new_vis, new_light;
+    int new_vis;
 
-    new_vis = clamp(from_vis + to_vis, 10) + 4;
-    new_light = clamp(new_vis + to_light - 8, 15); //clamp(to_light, 15);
+    new_vis = clamp(from_vis + to_vis * 2, 28) + 4;
 
-    printf("$%02x", new_light + new_vis * 16);
+    printf("$%02x", new_vis);
 
   }
   printf("\n\n");
@@ -140,7 +137,7 @@ void light(int xx, int yy, int overflow)
  printf((prevxxs == xxs && prevyys == yys) ? SHORT_LIGHT_ASM : LIGHT_ASM,
         bufferpos(xxs, yys),
         dest,
-        (int)(rr * 0.4f) == (int)(rrs * 0.4f) ? 0x0 : 0x1000,
+        (int)(rr * 0.8f) == (int)(rrs * 0.8f) ? 0x0 : 0x100,
         dest);
 
   prevxxs = xxs;

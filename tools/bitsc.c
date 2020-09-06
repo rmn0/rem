@@ -164,14 +164,14 @@ int main(int argc, char *argv[])
         if((buffer[n] & ((1 << planes) - 1)) && (buffer[n] >> planes != p) )
           fprintf(stderr, "warning: more than one palette used in frame %i: %i != %i\n", i, p, buffer[n] >> planes);
 
-      for(int n = 0; n < (1 << planes); ++n) {
-        unsigned short w =
-          (brighten(h.palette[n * 3 + (p << planes) * 3 + 0]) / 8)
-          | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 1]) / 8) << 5)
-          | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 2]) / 8) << 10);
-        fputc(w, fo);
-        fputc(w >> 8, fo);
-      }
+      /* for(int n = 0; n < (1 << planes); ++n) { */
+      /*   unsigned short w = */
+      /*     (brighten(h.palette[n * 3 + (p << planes) * 3 + 0]) / 8) */
+      /*     | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 1]) / 8) << 5) */
+      /*     | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 2]) / 8) << 10); */
+      /*   fputc(w, fo); */
+      /*   fputc(w >> 8, fo); */
+      /* } */
 
       for(int n = 0; n < (1 << planes); ++n) {
         unsigned short w =
@@ -182,14 +182,14 @@ int main(int argc, char *argv[])
         fputc(w >> 8, fo);
       }
 
-      /* for(int n = 0; n < (1 << planes); ++n) { */
-      /*   unsigned short w = */
-      /*     (h.palette[n * 3 + (p << planes) * 3 + 0] * 3 / 55) */
-      /*     | ((h.palette[n * 3 + (p << planes) * 3 + 1] * 3 / 55) << 5) */
-      /*     | ((h.palette[n * 3 + (p << planes) * 3 + 2] * 3 / 55) << 10); */
-      /*   fputc(w, fo); */
-      /*   fputc(w >> 8, fo); */
-      /* } */
+      for(int n = 0; n < (1 << planes); ++n) {
+        unsigned short w =
+          (h.palette[n * 3 + (p << planes) * 3 + 0] * 3 / 55)
+          | ((h.palette[n * 3 + (p << planes) * 3 + 1] * 3 / 55) << 5)
+          | ((h.palette[n * 3 + (p << planes) * 3 + 2] * 3 / 55) << 10);
+        fputc(w, fo);
+        fputc(w >> 8, fo);
+      }
 
     }
 
