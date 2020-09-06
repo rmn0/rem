@@ -254,12 +254,13 @@ light_frame:
 
 light_dma:
 
-        stz     reg_vmainc
+        lda     #$80
+        sta     reg_vmainc
 
         ldx     #vram::bg2
         stx     reg_vmadd
 
-        ldx     #$1800
+        ldx     #$1900
         stx     reg_dmapx
 
         ldx     dst_addr_base

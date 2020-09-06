@@ -68,7 +68,7 @@ light.ltil\
 border.stil snow.stil keys.stil\
 test.room\
 idle.ani walking.ani running.ani sliding.ani jumping.ani falling.ani walljump.ani dangling.ani crouching.ani\
-sprite.pal.i keys.pal.i\
+sprite.pal.i keys.pal.i light.pal.i\
 blit.i vis.i
 
 RESS = $(patsubst %,$(RESDIR)/%,$(RES))
@@ -138,7 +138,7 @@ $(RESDIR)/%.til : $(DATADIR)/%.gif $(gifr) $(bytesc) $(bitsc)
 # light tileset
 
 $(RESDIR)/%.ltil : $(DATADIR)/%.gif $(gifr) $(bytesc) $(bitsc)
-	$(gifr) $(TFLAGS) -f $< -n 0 | $(bytesc) $(TFLAGS) -w 128 -h 128 | $(bitsc) $(TFLAGS) -p -b 2 -o $(RESDIR)/$*.r
+	$(gifr) $(TFLAGS) -f $< -n 0 | $(bytesc) $(TFLAGS) -w 32 -h 8 | $(bitsc) $(TFLAGS) -p -b 2 -o $(RESDIR)/$*.r
 	touch $@
 
 
@@ -177,7 +177,7 @@ $(RESDIR)/%.ani : $(DATADIR)/%.gif $(gifr) $(spriteas) $(bitsc)
 	touch $@
 
 
-# sprite palette
+# sprite and light palettes
 
 $(RESDIR)/%.pal.i : $(DATADIR)/%.pal $(palc)
 	echo .segment \"rodata\" > $@

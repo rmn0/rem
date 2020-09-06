@@ -29,7 +29,7 @@ void vistable()
     int new_vis, new_light;
 
     new_vis = clamp(from_vis + to_vis, 10) + 4;
-    new_light = clamp(to_light, 15);
+    new_light = clamp(new_vis + to_light - 8, 15); //clamp(to_light, 15);
 
     printf("$%02x", new_light + new_vis * 16);
 

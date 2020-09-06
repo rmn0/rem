@@ -6,6 +6,13 @@
 #include "getext.h"
 #include "imgheader.h"
 
+int brighten(int i)
+{
+  i = i + i / 2;
+  if (i > 255) i = 255;
+  return i;
+}
+
 int main(int argc, char *argv[])
 {
   int tilewidth = 8;
@@ -159,6 +166,15 @@ int main(int argc, char *argv[])
 
       for(int n = 0; n < (1 << planes); ++n) {
         unsigned short w =
+          (brighten(h.palette[n * 3 + (p << planes) * 3 + 0]) / 8)
+          | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 1]) / 8) << 5)
+          | ((brighten(h.palette[n * 3 + (p << planes) * 3 + 2]) / 8) << 10);
+        fputc(w, fo);
+        fputc(w >> 8, fo);
+      }
+
+      for(int n = 0; n < (1 << planes); ++n) {
+        unsigned short w =
           (h.palette[n * 3 + (p << planes) * 3 + 0] / 8)
           | ((h.palette[n * 3 + (p << planes) * 3 + 1] / 8) << 5)
           | ((h.palette[n * 3 + (p << planes) * 3 + 2] / 8) << 10);
@@ -166,14 +182,14 @@ int main(int argc, char *argv[])
         fputc(w >> 8, fo);
       }
 
-      for(int n = 0; n < (1 << planes); ++n) {
-        unsigned short w =
-          (h.palette[n * 3 + (p << planes) * 3 + 0] * 3 / 55)
-          | ((h.palette[n * 3 + (p << planes) * 3 + 1] * 3 / 55) << 5)
-          | ((h.palette[n * 3 + (p << planes) * 3 + 2] * 3 / 55) << 10);
-        fputc(w, fo);
-        fputc(w >> 8, fo);
-      }
+      /* for(int n = 0; n < (1 << planes); ++n) { */
+      /*   unsigned short w = */
+      /*     (h.palette[n * 3 + (p << planes) * 3 + 0] * 3 / 55) */
+      /*     | ((h.palette[n * 3 + (p << planes) * 3 + 1] * 3 / 55) << 5) */
+      /*     | ((h.palette[n * 3 + (p << planes) * 3 + 2] * 3 / 55) << 10); */
+      /*   fputc(w, fo); */
+      /*   fputc(w >> 8, fo); */
+      /* } */
 
     }
 

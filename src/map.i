@@ -22,15 +22,15 @@
         bg1             .res $400
         bg2             .res $400
         debugbg         .res $400
-        lighttiles      .res $800
-        debugtiles      .res $280
-
-        unused1         .res $800 - $280
+        lighttiles      .res $1000
 
         ;; 24k
 
         spritetiles     .res $1000
-        bogus           .res $1000
+
+        debugtiles      .res $280
+
+        bogus           .res $800 - $280
 
         ;; 32k
 

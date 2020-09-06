@@ -354,6 +354,8 @@ int main(int argc, char *argv[])
             = (firsttile >= 4 ? BG_PRIORITY_BIT : 0)
             + (firsttile >= 2 ? BG_LIGHT_PALETTE_BIT : BG_DARK_PALETTE_BIT)
             + stile[firsttile];
+
+          // background layer
           roomdata[i + 1 * ROOM_WIDTH * ROOM_HEIGHT]
             = (secondtile >= 4 ? BG_PRIORITY_BIT : 0)
             + (secondtile >= 2 ? BG_LIGHT_PALETTE_BIT : BG_DARK_PALETTE_BIT)

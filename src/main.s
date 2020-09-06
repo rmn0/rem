@@ -62,7 +62,7 @@ zerobyte:
         ;; int ppu state
 
         .macro ppu_init
-        mov     reg_bgmode, #$08 | setup::bgmode
+        mov     reg_bgmode, #00 | setup::bgmode
 
         mov     reg_bgxsc + $00, #(((vram::bg0 / $400) << $2) | $0)
         mov     reg_bgxsc + $01, #(((vram::bg1 / $400) << $2) | $0)
@@ -209,13 +209,16 @@ tileset_init:
         dma_cgram_memcpy $00, #$60, #(.loword(data_tileset_1) + $2020), #^data_tileset_1, #$20
         dma_cgram_memcpy $00, #$70, #(.loword(data_tileset_2) + $2020), #^data_tileset_2, #$20
 
-        dma_cgram_memcpy $00, #$00, #(.loword(data_light) + $1000), #^data_light, #$8
+        dma_cgram_memcpy $00, #$00, #.loword(light_palette), #^light_palette, #$40
 
         dma_vram_memcpy2 $00, #vram::tileset0, #.loword(data_tileset_0), #^data_tileset_0, #$2000
         dma_vram_memcpy2 $00, #vram::tileset1, #.loword(data_tileset_1), #^data_tileset_1, #$2000
         dma_vram_memcpy2 $00, #vram::tileset2, #.loword(data_tileset_2), #^data_tileset_2, #$2000
 
-        dma_vram_memcpy2 $00, #vram::lighttiles, #.loword(data_light), #^data_light, #$1000
+        dma_vram_memcpy2 $00, #vram::lighttiles + $0000, #(.loword(data_light) + $00), #^data_light, #$10
+        dma_vram_memcpy2 $00, #vram::lighttiles + $0800, #(.loword(data_light) + $10), #^data_light, #$10
+        dma_vram_memcpy2 $00, #vram::lighttiles + $1000, #(.loword(data_light) + $20), #^data_light, #$10
+        dma_vram_memcpy2 $00, #vram::lighttiles + $1800, #(.loword(data_light) + $30), #^data_light, #$10
 
         ;; key is a 16x16 sprite
 
@@ -313,6 +316,9 @@ title_screen:
         jsr     tileset_init
 
         jsr     sound_test_2
+
+        ;; dma_vram_memseth $00, #vram::bg2, #$00, #($20 * $1d)
+
 
         jsr     fadein
 
