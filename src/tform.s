@@ -49,9 +49,8 @@ room_vv_offset = $fe
 
         .segment "bss"
 
-
-        .export debug_view
-debug_view:
+        ;; .export debug_view
+        ;; debug_view:
 
 scroll_xx:      .res $2
 scroll_yy:      .res $2

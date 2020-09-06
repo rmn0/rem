@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
           lroomdata[i + 5 * ROOM_WIDTH * ROOM_HEIGHT] = rearrange_collision_bits(stile[COLDATALAYER]);
 
           // light layer
-          lroomdata[i + 4 * ROOM_WIDTH * ROOM_HEIGHT] = light | (stile[VISLAYER] << 4);
+          lroomdata[i + 4 * ROOM_WIDTH * ROOM_HEIGHT] = stile[VISLAYER] * 4;
 
           // foreground layer
           roomdata[i]

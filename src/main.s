@@ -32,9 +32,8 @@
 
         .segment "bss"
 
-
-;;         .export debug_view
-;; debug_view:
+.export debug_view
+debug_view:
         
 frame_counter:          .res $2
 

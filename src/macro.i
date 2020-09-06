@@ -83,6 +83,14 @@
      	mov     reg_mdmaen, channel
         .endmacro
 
+        .macro dma_wram_memset channel, addressl, addressh, length, byte
+   	mov3            reg_wmadd, addressl, addressh
+	dma_control     channel, #$8008
+        dma_source_addr channel, #.loword(byte), #^byte
+        dma_length      channel, length
+        dma_enable      #(1 << channel)
+        .endmacro
+
         .macro dma_wram_memclear channel, addressl, addressh, length
    	mov3            reg_wmadd, addressl, addressh
 	dma_control     channel, #$8008
