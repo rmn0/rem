@@ -38,14 +38,46 @@ int bufferpos(int xx, int yy)
 void tile(int xx, int yy);
 int offset_to_end_label(int xx, int yy);
 
-int end_loop(int xx, int yy, int from_xx, int from_yy)
-{
-  if(xx == 0 && yy == 0) return 1;
+int iteration = 0;
 
+float distance(float xx, float yy)
+{
+  xx += 0.5f - iteration * 0.25f;
+  return sqrtf(xx * xx + yy * yy);
+}
+
+int stable2[4][24*24];
+int stable3[4][24*24];
+
+int makestables()
+{
   // hand-made table defines how to select the source lightel
   // could probably created algorithmically, but result  won't look as good
 
-  int stable[] = { 0, 1, 1, 3, 1, 4, 3, 7, 1, 7, 4, 11, 3, 10, 7, 15, 1, 13, 9, 19, 5, 17, 11, 23 };
+  int stable[] =
+    { 0, 0, 1, 1, 3, 1, 4, 3, 7, 1, 7, 4, 11, 3, 10, 7, 15, 1, 13, 9, 19, 5, 17, 11, 23, 23 };
+
+  int stable1[26*26];
+  int stable1b[26*26];
+
+  for(int yy = 0; yy < 26; yy++)
+    for(int xx = 0; xx < 26; xx++) {
+      stable1[yy * 26 + xx] = yy > stable[xx] + 1 ? 1 : 0;
+      stable1b[yy * 26 + xx] = yy > stable[xx] ? 1 : 0;
+    }
+
+  for(int i = 0; i < 4; i++)
+    for(int yy = 0; yy < 24; yy++)
+      for(int xx = 0; xx < 24; xx++) {
+        stable2[i][yy * 24 + xx] = stable1b[yy * 26 + xx + (i < (yy ^ 1 & 1) + (xx ^ 1 & 1) * 2 ? 1 : 0) + 27];
+        stable3[i][yy * 24 + xx] = stable1[yy * 26 + xx + (i < (xx & 1) + (yy & 1) * 2 ? 1 : 0) * 26 + 27];
+      }
+}
+
+
+int end_loop(int xx, int yy, int from_xx, int from_yy)
+{
+  if(xx == 0 && yy == 0) return 1;
 
   int xxabs = xx < 0 ? -xx : xx;
   int yyabs = yy < 0 ? -yy : yy;
@@ -54,12 +86,12 @@ int end_loop(int xx, int yy, int from_xx, int from_yy)
 
   if(xxabs > yyabs) {
     if(xx < 0) xxs = xx + 1; else xxs = xx - 1;
-    if(yyabs >= stable[xxabs]) {
+    if(stable2[xx > 0 ? 3 - iteration : iteration][xxabs + yyabs * 24]) {
       if(yy < 0) yys = yy + 1; else yys = yy - 1;
     } else yys = yy;
   } else {
     if(yy < 0) yys = yy + 1; else yys = yy - 1;
-    if(xxabs >= stable[yyabs]) {
+    if(stable3[xx < 0 ? 3 - iteration : iteration][yyabs + xxabs * 24]) {
       if(xx < 0) xxs = xx + 1; else xxs = xx - 1;
     } else xxs = xx;
   }
@@ -68,8 +100,8 @@ int end_loop(int xx, int yy, int from_xx, int from_yy)
 
   // get distance from orgin
 
-  float rr = sqrtf(xx * xx + yy * yy);
-  float rrs = sqrtf(xxs * xxs + yys * yys);
+  float rr = distance(xx, yy);
+  float rrs = distance(xxs, yys);
 
   if(rr > LIGHT_RADIUS) return 1;
 
@@ -84,10 +116,10 @@ void light(int xx, int yy, int from_xx, int from_yy)
 
   int jump_length = offset_to_end_label(xx, yy);
 
-  float rr = sqrtf(xx * xx + yy * yy);
-  float rrs = sqrtf(from_xx * from_xx + from_yy * from_yy);
+  float rr = distance(xx, yy);
+  float rrs = distance(from_xx, from_yy);
 
-  int tiledif = (int)(rr * 0.8f) - (int)(rrs * 0.8f);
+  int tiledif = (int)(rr * 1.2f) - (int)(rrs * 1.2f);
 
   // just for debugging
   if(jump_length > 127) long_tile_count++; else short_tile_count++;
@@ -97,12 +129,12 @@ void light(int xx, int yy, int from_xx, int from_yy)
         tiledif == 0 ? "clc" : "sec",
         bufferpos(from_xx, from_yy),
         tiledif > 1 ? "inc" : "",
-        yy * 256 + xx,
+        yy * 256 + xx + 0x100000 * (iteration + 1),
         bufferpos(xx, yy));
 
   tile(xx, yy); // recursively build the shadow cone
 
-  printf("_end_tile_%04x:\n", yy * 256 + xx);
+  printf("_end_tile_%04x:\n", yy * 256 + xx + 0x100000 * (iteration + 1));
 }
 
 int light_length(int xx, int yy, int from_xx, int from_yy)
@@ -111,7 +143,7 @@ int light_length(int xx, int yy, int from_xx, int from_yy)
 
   int jump_length = offset_to_end_label(xx, yy);
 
-  if(jump_length > 127) jump_length += 15; else jump_length += 12;
+  if(jump_length > 127) jump_length += 16; else jump_length += 13;
 
   return jump_length;
 }
@@ -166,28 +198,37 @@ void fence()
 
 int main()
 {
-  printf(".export viscast\n");
+  makestables();
+
+  printf(".export viscast_0, viscast_1, viscast_2, viscast_3\n");
   printf(".import light_origin \n\n");
   printf(".import visibility_origin \n\n");
 
   printf(".segment \"code3\"\n\n");
 
-  printf("\nviscast:\n\n");
-  printf("lda #$7e\npha\nplb\n\n");
 
-  fence();
 
-  short_tile_count = 0;
-  long_tile_count = 0;
+  for(int i = 0; i < 4; ++i) {
+    iteration = i;
 
-  tile(0, 0);
+    short_tile_count = 0;
+    long_tile_count = 0;
 
-  fprintf(stderr, "generated %i short tiles and %i long tiles (%i total).\n",
-          short_tile_count, long_tile_count, short_tile_count + long_tile_count);
+    if(i == 2) printf(".segment \"code4\"\n\n");
 
-  printf("_end:\n\n");
-  printf("lda #$80\npha\nplb\n\n");
-  printf("rtl\n\n");
+    printf("\nviscast_%i:\n\n", i);
+    printf("lda #$7e\npha\nplb\n\n");
+
+    fence();
+
+    tile(0, 0);
+
+    fprintf(stderr, "generated %i short tiles and %i long tiles (%i total).\n",
+            short_tile_count, long_tile_count, short_tile_count + long_tile_count);
+
+    printf("lda #$80\npha\nplb\n\n");
+    printf("rtl\n\n");
+  }
 
   return 0;
 };

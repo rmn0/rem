@@ -16,7 +16,7 @@
 
         .export full_update_xx, full_update_en
 
-        .export light_xx, light_yy
+        .export light_xx, light_yy, light_pixel_xx, light_pixel_yy
 
         .exportzp tform_tile_mask, tform_room_mask, room_hh_offset, room_vv_offset
 
@@ -65,6 +65,8 @@ scroll_prev_yy: .res $2
 light_xx:       .res $2
 light_yy:       .res $2
 
+light_pixel_xx:       .res $2
+light_pixel_yy:       .res $2
 
         .segment "code"
 
@@ -377,13 +379,17 @@ _skip_bb:
         ;; xx : position in pixel-space
         ;; sxx : scroll coordinate in pixel-space
 
-        ;; result is stored in lxx
+        ;; result is stored in lxx, lpxx
 
-        .macro light_pos xx, sxx, lxx
+        .macro light_pos xx, sxx, lxx, lpxx
         lda     sxx
         and     #$100 - $8
         sec
         sbc     xx
+        sta     lxx
+        and     #$7
+        sta     lpxx
+        lda     lxx
         lsr
         lsr
         lsr
@@ -562,7 +568,7 @@ _skip_portal:
 
         ;; light update
 
-        light_pos     rem_entity + entity::pos_xx, scroll_xx, light_xx
-        light_pos     rem_entity + entity::pos_yy, scroll_yy, light_yy
+        light_pos     rem_entity + entity::pos_xx, scroll_xx, light_xx, light_pixel_xx
+        light_pos     rem_entity + entity::pos_yy, scroll_yy, light_yy, light_pixel_yy
 
         rts

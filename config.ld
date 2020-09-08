@@ -45,7 +45,7 @@ segments {
 
        code2:           load = rom2, type = ro, optional = yes;
        code3:           load = rom3, type = ro, optional = yes;
-       vistable:        load = rom4, type = ro, optional = yes;
+       code4:           load = rom4, type = ro, optional = yes;
 
        res0:	        load = rom5, type = ro, optional = yes;
        res1:	        load = rom6, type = ro, optional = yes;
