@@ -208,8 +208,6 @@ _black_byte:
         .byte $ff
 
 light_frame:
-        dma_wram_memset $00, #.loword(light_origin), #^light_origin, #$20 * $40, _black_byte
-
         sa16
 
         get_tform_info
@@ -241,9 +239,11 @@ light_frame:
 
         blit_vis_info
 
-        plx                                   ; light coordinates
-
         sa8
+
+        dma_wram_memset $00, light_dst_addr_base, #^light_origin, #$20 * $1e, _black_byte
+
+        plx                                   ; light coordinates
 
         lda     #224
         sta     f:light_origin + $20 * $1e

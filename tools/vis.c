@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#define LIGHT_RADIUS 21
-
+#define LIGHT_RADIUS 23
 // assembly snippets for putting together an unrolled
 // visibility computation loop
 
@@ -11,33 +10,37 @@
   "lda a:light_origin + $%04x\n"                \
   "%s\n"                                        \
   "adc a:visibility_origin + $%04x\n"           \
+  "%s\n"                                        \
   "bmi :+\n"                                    \
   "jmp _end_tile_%04x\n"                        \
   ":\n"                                         \
   "sta a:light_origin + $%04x\n\n"
 
-// get address of a lightel in the bufferpos
+#define SHORT_LIGHT_ASM                         \
+  "lda a:light_origin + $%04x\n"                \
+  "%s\n"                                        \
+  "adc a:visibility_origin + $%04x\n"           \
+  "%s\n"                                        \
+  "bpl _end_tile_%04x\n"                        \
+  "sta a:light_origin + $%04x\n\n"
+
+
+int short_tile_count, long_tile_count;
+
+// get address of a lightel in the buffer
 
 int bufferpos(int xx, int yy)
 {
-   int p = xx + yy * 32 + 30 * 32;
-
-   // sanity check
-   if(p < 0) { fprintf(stderr, "warning: buffer size check failed.\n"); }
-   if(p >= 32 * 64) { fprintf(stderr, "warning : buffer size check failed.\n"); }
-
-   return p;
+  return (xx + yy * 32 + 32 * 30) & 0xffff;
 }
 
 
 void tile(int xx, int yy);
+int offset_to_end_label(int xx, int yy);
 
-
-// generate the assembly for a single lightel
-
-void light(int xx, int yy, int from_xx, int from_yy)
+int end_loop(int xx, int yy, int from_xx, int from_yy)
 {
-  if(xx == 0 && yy == 0) return;
+  if(xx == 0 && yy == 0) return 1;
 
   // hand-made table defines how to select the source lightel
   // could probably created algorithmically, but result  won't look as good
@@ -61,26 +64,58 @@ void light(int xx, int yy, int from_xx, int from_yy)
     } else xxs = xx;
   }
 
-  if(xxs != from_xx || yys != from_yy) return;
+  if(xxs != from_xx || yys != from_yy) return 1;
 
   // get distance from orgin
 
   float rr = sqrtf(xx * xx + yy * yy);
   float rrs = sqrtf(xxs * xxs + yys * yys);
 
-  int dest = bufferpos(xx, yy);
+  if(rr > LIGHT_RADIUS) return 1;
 
-  if(rr > LIGHT_RADIUS) return;
+  return 0;
+}
 
-  printf(LIGHT_ASM,
-        bufferpos(xxs, yys),
-        (int)(rr * 0.8f) == (int)(rrs * 0.8f) ? "clc" : "sec",
-        bufferpos(xxs, yys), yy * 256 + xx, dest);
+// generate the assembly for a single lightel
+
+void light(int xx, int yy, int from_xx, int from_yy)
+{
+  if(end_loop(xx, yy, from_xx, from_yy)) return;
+
+  int jump_length = offset_to_end_label(xx, yy);
+
+  float rr = sqrtf(xx * xx + yy * yy);
+  float rrs = sqrtf(from_xx * from_xx + from_yy * from_yy);
+
+  int tiledif = (int)(rr * 0.8f) - (int)(rrs * 0.8f);
+
+  // just for debugging
+  if(jump_length > 127) long_tile_count++; else short_tile_count++;
+
+  printf(jump_length > 127 ? LIGHT_ASM : SHORT_LIGHT_ASM,
+        bufferpos(from_xx, from_yy),
+        tiledif == 0 ? "clc" : "sec",
+        bufferpos(from_xx, from_yy),
+        tiledif > 1 ? "inc" : "",
+        yy * 256 + xx,
+        bufferpos(xx, yy));
 
   tile(xx, yy); // recursively build the shadow cone
 
   printf("_end_tile_%04x:\n", yy * 256 + xx);
 }
+
+int light_length(int xx, int yy, int from_xx, int from_yy)
+{
+  if(end_loop(xx, yy, from_xx, from_yy)) return 0;
+
+  int jump_length = offset_to_end_label(xx, yy);
+
+  if(jump_length > 127) jump_length += 15; else jump_length += 12;
+
+  return jump_length;
+}
+
 
 void tile(int xx, int yy)
 {
@@ -94,20 +129,36 @@ void tile(int xx, int yy)
   light(xx + 1, yy + 1, xx, yy);
 }
 
+int offset_to_end_label(int xx, int yy)
+{
+  int offset = 0;
+
+  offset += light_length(xx - 1, yy - 1, xx, yy);
+  offset += light_length(xx    , yy - 1, xx, yy);
+  offset += light_length(xx + 1, yy - 1, xx, yy);
+  offset += light_length(xx - 1, yy    , xx, yy);
+  offset += light_length(xx + 1, yy    , xx, yy);
+  offset += light_length(xx - 1, yy + 1, xx, yy);
+  offset += light_length(xx    , yy + 1, xx, yy);
+  offset += light_length(xx + 1, yy + 1, xx, yy);
+
+  return offset;
+}
 
 // make a fence around the visibile area
 // for aborting the loop
 void fence()
 {
-  printf("lda #31\n");
-  for(int ii = 0; ii < 32; ++ii) {
+  printf("sa16\n");
+  printf("lda #$2020\n");
+  for(int ii = 0; ii < 32; ii += 2) {
     printf("sta a:visibility_origin + $%04x, x\n", ii);
-    printf("sta a:visibility_origin + $%04x, x\n", ii + 32 * 29);
+    printf("sta a:visibility_origin + $%04x, x\n", ii + 32 * 28);
   }
-  for(int ii = 0; ii < 30; ++ii) {
-    printf("sta a:visibility_origin + $%04x, x\n", ii * 32);
+  for(int ii = 0; ii < 28; ++ii) {
     printf("sta a:visibility_origin + $%04x, x\n", ii * 32 + 31);
   }
+  printf("sa8\n");
 }
 
 
@@ -126,7 +177,13 @@ int main()
 
   fence();
 
+  short_tile_count = 0;
+  long_tile_count = 0;
+
   tile(0, 0);
+
+  fprintf(stderr, "generated %i short tiles and %i long tiles (%i total).\n",
+          short_tile_count, long_tile_count, short_tile_count + long_tile_count);
 
   printf("_end:\n\n");
   printf("lda #$80\npha\nplb\n\n");
