@@ -31,7 +31,9 @@ rambuffer:
 
         .define debug_area_height $10
 
-        .define debugtile_hibyte $25
+        .define debugtiles_vram_offset $80
+        .define debugtiles_vram_addr vram::lighttiles + debugtiles_vram_offset
+        .define debugtile_hibyte $6 * $8
 
         ;; dma tables for switching between the game and debug views
 
@@ -90,11 +92,9 @@ divtable:
 
 debug_init:
 
-        ;; laod debug tileset and palette
+        ;; laod debug tileset
 
-        dma_cgram_memcpy $00, #$4, #.loword(data_debug + $500), #^data_debug, #$8
-
-        dma_vram_memcpy2 $00, #vram::debugtiles, #.loword(data_debug), #^data_debug, #$500
+        dma_vram_memcpy2 $00, #debugtiles_vram_addr, #.loword(data_debug), #^data_debug, #$500
 
         ;; setup debug background
 
@@ -112,11 +112,11 @@ debug_init:
         cpx     #$20
         bne     :-
 
-        ldx     #$0520
+        ldx     #debugtile_hibyte * $100 + $20 + debugtiles_vram_offset / $8
         :
         stx     reg_vmdata
         inx
-        cpx     #$0540
+        cpx     #debugtile_hibyte * $100 + $40 + debugtiles_vram_offset / $8
         bne     :-
 
         ;; initialize debug memory pointer
@@ -142,11 +142,19 @@ debug_init:
         lsr
         lsr
         lsr
+
+        clc
+        adc     #debugtiles_vram_offset / $8
+
         sta     reg_wmdata
 
         lda     byte
         and     #$f
         ora     #$10
+
+        clc
+        adc     #debugtiles_vram_offset / $8
+
         sta     reg_wmdata
         .endmacro
 
@@ -198,6 +206,9 @@ debug_update:
 
         sa8
 
+        clc
+        adc     #debugtiles_vram_offset / $8
+
         sta     reg_wmdata
 
         ;; render indicator for vblank time
@@ -219,6 +230,9 @@ debug_update:
         ora     #$440
 
         sa8
+
+        clc
+        adc     #debugtiles_vram_offset / $8
 
         sta     reg_wmdata
 
@@ -242,16 +256,6 @@ debug_update:
         sta     f:hdma_table_bg2xofs + $8
 
         rts
-
-
-        .macro  hdma channel, control, table
-        ldx     control
-        stx     reg_dmapx + channel * $10
-        ldx     #.loword(table)
-        stx     reg_a1tx + channel * $10
-        lda     #^(table)
-        sta     reg_a1bx + channel * $10
-        .endmacro
 
 
         ;; copy the ram buffer into vram

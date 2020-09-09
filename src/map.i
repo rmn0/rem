@@ -27,10 +27,7 @@
         ;; 24k
 
         spritetiles     .res $1000
-
-        debugtiles      .res $280
-
-        bogus           .res $800 - $280
+        bogus           .res $1000
 
         ;; 32k
 

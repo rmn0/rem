@@ -153,7 +153,6 @@
         dma_enable      #(1 << channel)
         .endmacro
 
-
         .macro mul aa, bb
         .if .xmatch({aa},{a})
         sta     reg_wrmpya
@@ -163,3 +162,11 @@
         mov     reg_wrmpyb, bb
         .endmacro
 
+        .macro  hdma channel, control, table
+        ldx     control
+        stx     reg_dmapx + channel * $10
+        ldx     #.loword(table)
+        stx     reg_a1tx + channel * $10
+        lda     #^(table)
+        sta     reg_a1bx + channel * $10
+        .endmacro

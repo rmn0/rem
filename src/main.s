@@ -61,6 +61,8 @@ zerobyte:
         ;; int ppu state
 
         .macro ppu_init
+        ;; mov     reg_setini, #$1
+
         mov     reg_bgmode, #00 | setup::bgmode
 
         mov     reg_bgxsc + $00, #(((vram::bg0 / $400) << $2) | $0)
@@ -316,6 +318,8 @@ title_screen:
 
         jsr     sound_test_2
 
+        jsr     light_setup
+
         ;; dma_vram_memseth $00, #vram::bg2, #$00, #($20 * $1d)
 
 
@@ -354,6 +358,8 @@ _loop:
         sa8
 
         ;; call main update routines
+
+        jsr     light_hdma
 
         jsr     transform_update
 

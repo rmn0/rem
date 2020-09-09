@@ -82,7 +82,7 @@ blit_buffer:
         .endmacro
 
 
-        ;; queue vram dma copy for a vertically aligned (32x8 tile) region
+        ;; queue vram dma copy for a vertically aligned (32x4 tile) region
 
         ;; buffer  : buffer set index
         ;; layer   : layer index 0..1
@@ -106,7 +106,7 @@ blit_buffer:
         .endmacro
 
 
-        ;; queue vram dma copy for a horizontally aligned (8x32 tile) region
+        ;; queue vram dma copy for a horizontally aligned (1x32 tile) region
 
         ;; buffer  : buffer set index
         ;; layer   : layer index 0..1

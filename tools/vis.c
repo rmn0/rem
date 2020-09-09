@@ -119,7 +119,7 @@ void light(int xx, int yy, int from_xx, int from_yy)
   float rr = distance(xx, yy);
   float rrs = distance(from_xx, from_yy);
 
-  int tiledif = (int)(rr * 1.2f) - (int)(rrs * 1.2f);
+  int tiledif = (int)(rr * 0.8f) - (int)(rrs * 0.8f);
 
   // just for debugging
   if(jump_length > 127) long_tile_count++; else short_tile_count++;
