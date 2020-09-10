@@ -351,23 +351,47 @@ _end:
         .macro scanline_group
         .scope
 
-        tya                                   ; a = scrolling coordinate
-        clc
-        adc     a:$0 + frame::bounds_table_right, x
-        bcs     _clip
-
         tya
         adc     a:$0 + frame::bounds_table_left, x
         bcc     :+
-        jmp     _rightclip
+        jmp     _clip
         :
+
+        tya                                   ; a = scrolling coordinate
+        clc
+        adc     a:$0 + frame::bounds_table_right, x
+        bcs     _rightclip
+
         jmp     _noclip
+
+_rightclip:
+
+        phx
+        get_data_address
+
+        unroll_rightclip_8bits 0
+        unroll_rightclip_8bits 5
+        unroll_rightclip_8bits 10
+        unroll_rightclip_8bits 15
+        unroll_rightclip_8bits 20
+        unroll_rightclip_8bits 25
+        unroll_rightclip_8bits 30
+        unroll_rightclip_8bits 35
+        unroll_rightclip_8bits 40
+        unroll_rightclip_8bits 45
+        unroll_rightclip_8bits 50
+        unroll_rightclip_8bits 55
+        unroll_rightclip_8bits 60
+        unroll_rightclip_8bits 65
+        unroll_rightclip_8bits 70
+        unroll_rightclip_8bits 75
+
+        plx
+        jmp     _group_end
 
 _clip:  
         phx
         get_data_address
-
-        clc
 
         unroll_clip_8bits 0
         unroll_clip_8bits 5
@@ -388,27 +412,6 @@ _clip:
 
         plx
         jmp     _group_end
-
-_rightclip:
-        phx
-        get_data_address
-
-        unroll_rightclip_8bits 0
-        unroll_rightclip_8bits 5
-        unroll_rightclip_8bits 10
-        unroll_rightclip_8bits 15
-        unroll_rightclip_8bits 20
-        unroll_rightclip_8bits 25
-        unroll_rightclip_8bits 30
-        unroll_rightclip_8bits 35
-        unroll_rightclip_8bits 40
-        unroll_rightclip_8bits 45
-        unroll_rightclip_8bits 50
-        unroll_rightclip_8bits 55
-        unroll_rightclip_8bits 60
-        unroll_rightclip_8bits 65
-        unroll_rightclip_8bits 70
-        unroll_rightclip_8bits 75
 
 _noclip:
         phx
