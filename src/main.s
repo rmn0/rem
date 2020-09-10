@@ -318,7 +318,11 @@ title_screen:
 
         jsr     sound_test_2
 
-        jsr     light_setup
+        jsr     light_hdma_setup
+        jsr     window_hdma_setup
+
+        lda     #$12
+        sta     reg_hdmaen
 
         ;; dma_vram_memseth $00, #vram::bg2, #$00, #($20 * $1d)
 
@@ -359,7 +363,9 @@ _loop:
 
         ;; call main update routines
 
-        jsr     light_hdma
+        jsr     light_hdma_update
+
+        jsl     window_hdma_update_8bits
 
         jsr     transform_update
 
@@ -371,7 +377,7 @@ _loop:
 
         jsr     key_update
 
-        jsr     snow_update
+        ;; jsr     snow_update
 
         ;; if debug is enabled, get frame time
 

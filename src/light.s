@@ -6,7 +6,7 @@
 
         .include "rem.i"
 
-        .export light_origin, visibility_origin, light_frame, light_dma, light_hdma, light_setup
+        .export light_origin, visibility_origin, light_frame, light_dma, light_hdma_update, light_hdma_setup
 
         .import scroll_xx, scroll_yy, light_xx, light_yy, light_pixel_xx, light_pixel_yy
 
@@ -287,7 +287,7 @@ _end:
 
         rts
 
-light_hdma:     
+light_hdma_update:     
 
         ;; make hdma table
 
@@ -338,11 +338,10 @@ light_hdma:
         cpy     #$e0 * 3
         bmi     :-
 
-
         rts
 
 
-light_setup:
+light_hdma_setup:
         lda     #$1
         ldx     #$00
 
@@ -356,6 +355,8 @@ light_setup:
         bmi     :-
 
         stz     hdma_table, x
+
+        hdma    $4, #.lobyte(reg_bgxhofs + $2 * $2) * $100 + $2, hdma_table
 
         rts
 
@@ -383,11 +384,6 @@ light_dma:
 
         lda     #$1
         sta     reg_mdmaen
-
-        hdma    $4, #.lobyte(reg_bgxhofs + $2 * $2) * $100 + $2, hdma_table
-
-        lda     #$10
-        sta     reg_hdmaen
 
         rts
 

@@ -38,6 +38,7 @@ palc = $(TOOLSDIR)/palc
 resp = $(TOOLSDIR)/resp
 blit = $(TOOLSDIR)/blit
 vis = $(TOOLSDIR)/vis
+wani = $(TOOLSDIR)/wani
 
 TOOLSRCS = $(shell find $(TOOLSDIR) -name '*.c')
 TOOLS = $(patsubst $(TOOLSDIR)/%.c,$(TOOLSDIR)/%,$(TOOLSRCS))
@@ -69,6 +70,7 @@ border.stil snow.stil keys.stil\
 test.room\
 idle.ani walking.ani running.ani sliding.ani jumping.ani falling.ani walljump.ani dangling.ani crouching.ani\
 sprite.pal.i keys.pal.i light.pal.i\
+noname.window.r\
 blit.i vis.i
 
 RESS = $(patsubst %,$(RESDIR)/%,$(RES))
@@ -185,10 +187,17 @@ $(RESDIR)/%.pal.i : $(DATADIR)/%.pal $(palc)
 	echo $*_palette: >> $@
 	cat $< | $(palc) >> $@
 
+
 # font data
 
 $(RESDIR)/glyphdata.bin : $(DATADIR)/font.gif $(gifr) $(bitsc)
 	$(gifr) $(TFLAGS) -f $< -n 1 | $(bitsc) $(TFLAGS) -b 1 -h 16 -o $@
+
+
+# window animations
+
+$(RESDIR)/%.window.r : $(DATADIR)/%.gif $(gifr) $(wani)
+	$(gifr) $(TFLAGS) -f $< -n 0 | $(wani) $(TFLAGS) -o $@
 
 
 # screens
@@ -198,6 +207,8 @@ $(RESDIR)/%.screen.r : $(DATADIR)/%.gif $(gifr) $(bytesc) $(bitsc)
 
 $(RESDIR)/title.screen.r : $(DATADIR)/title.gif $(gifr) $(bytesc) $(bitsc)
 	$(gifr) $(TFLAGS) -f $< -n 0 | $(bytesc) $(TFLAGS) -w 8 -h 8 -t $@ -b 8448 | $(bitsc) $(TFLAGS) -o $(RESDIR)/title.tiles.r
+
+
 
 
 
