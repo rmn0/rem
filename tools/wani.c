@@ -7,6 +7,7 @@
 #include "imgheader.h"
 
 #define NSPANS 5
+#define BOUNDING_BOX_HEIGHT 16
 
 int main(int argc, char *argv[])
 {
@@ -56,6 +57,8 @@ int main(int argc, char *argv[])
   fread(buffer, 1, fh.w * fh.h, fi);
 
   unsigned char* spantable = malloc(fh.h * NSPANS);
+  unsigned char boxtable[(256 / BOUNDING_BOX_HEIGHT) * 2];
+  unsigned char spanmax[256];
 
   unsigned short firstline = 0xff;
   unsigned short linecount = 0xff;
@@ -86,13 +89,35 @@ int main(int argc, char *argv[])
 
     if(span == 2) {
       // setup up the unneeded span so that it will clip early
-      spantable[yy * NSPANS + 2] = 0x7f; //spantable[yy * NSPANS + 0];
-      spantable[yy * NSPANS + 3] = 0x7f; //spantable[yy * NSPANS + 1];
+      //spantable[yy * NSPANS + 2] = 0x7f; //spantable[yy * NSPANS + 0];
+      //spantable[yy * NSPANS + 3] = 0x7f; //spantable[yy * NSPANS + 1];
+
+      spantable[yy * NSPANS + 2] = 0;
+      spantable[yy * NSPANS + 3] = 0;
     }
+
+    spanmax[yy] = lastxx;
 
     if(firstline == 0xff && span > 0) firstline = yy;
     if(span > 0) linecount = yy + 1 - firstline;
   }
+
+  for(int yy = 0; yy < fh.h / BOUNDING_BOX_HEIGHT; ++yy) {
+    int lmax = 0, rmax = 0;
+    for(int yy2 = 0; yy2 < BOUNDING_BOX_HEIGHT; ++yy2) {
+      int llyy = (yy * BOUNDING_BOX_HEIGHT) + yy2 + firstline;
+      if(llyy >= firstline + linecount) llyy = firstline + linecount - 1;
+
+      int l = spantable[llyy * NSPANS + 0] + spantable[llyy * NSPANS + 1];
+      int r = spanmax[llyy];
+
+      if(l > lmax) lmax = l;
+      if(r > rmax) rmax = r;
+    }
+    boxtable[yy] = lmax;
+    boxtable[yy + 256 / BOUNDING_BOX_HEIGHT] = rmax;
+  }
+
 
   FILE *fo = fo = fopen(outfile, "wb");
 
@@ -102,6 +127,8 @@ int main(int argc, char *argv[])
 
   fwrite(&firstline, 1, 2, fo);
   fwrite(&linecount, 1, 2, fo);
+
+  fwrite(boxtable, 1, (256 / BOUNDING_BOX_HEIGHT) * 2, fo);
 
   fwrite(&spantable[firstline * NSPANS], 1, linecount, fo);
 

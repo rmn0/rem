@@ -6,6 +6,16 @@
         .include "rem.i"
 
 
+        .define bounds_group_size $10
+
+        .struct frame
+        width                   .res $2
+        height                  .res $2
+        bounds_table_left       .res $100 / bounds_group_size
+        bounds_table_right      .res $100 / bounds_group_size
+        data                    .res $1       ;variable length
+        .endstruct
+
         .export window_hdma_setup, window_hdma_update, window_hdma_update_8bits
 
 
@@ -179,7 +189,6 @@ window_hdma_update:
         sa16
         clc                                   ; nothing should ever set the carry in this loop
 
-_loop:
         unroll  0
         unroll  1
         unroll  2
@@ -204,7 +213,45 @@ _loop:
 
         .segment "code2"
 
-        .macro unroll_loop_8bits offset
+
+        .macro get_data_address
+
+        sa16
+
+        lda     3, s
+        tax
+        clc
+        adc     #80
+        sta     3, s
+
+        sa8
+
+        .endmacro
+
+
+        .macro unroll_noclip_8bits offset
+
+        lda     #$1
+        sta     reg_wmdata_direct
+
+        tya
+
+        adc     a:$0 + frame::data + offset, x
+        sta     reg_wmdata_direct
+
+        adc     a:$1 + frame::data + offset, x
+        sta     reg_wmdata_direct
+
+        adc     a:$2 + frame::data + offset, x
+        sta     reg_wmdata_direct
+
+        adc     a:$3 + frame::data + offset, x
+        sta     reg_wmdata_direct
+
+        .endmacro
+
+
+        .macro unroll_rightclip_8bits offset
         .scope
 
         lda     #$1
@@ -213,19 +260,59 @@ _loop:
         tya                                   ; a = scrolling coordinate
         clc
 
-        adc     a:$4 + offset, x
-        bcs     _clip4
+        adc     a:$0 + frame::data + offset, x
         sta     reg_wmdata_direct
 
-        adc     a:$5 + offset, x
-        bcs     _clip3
+        adc     a:$1 + frame::data + offset, x
         sta     reg_wmdata_direct
 
-        adc     a:$6 + offset, x
+        adc     a:$2 + frame::data + offset, x
         bcs     _clip2
         sta     reg_wmdata_direct
 
-        adc     a:$7 + offset, x
+        adc     a:$3 + frame::data + offset, x
+        bcs     _clip1
+        sta     reg_wmdata_direct
+
+        bra     _end
+
+_clip2: 
+        lda     #$ff
+        sta     reg_wmdata_direct
+        sta     reg_wmdata_direct
+        bra     _end
+
+_clip1: 
+        lda     #$ff
+        sta     reg_wmdata_direct
+
+_end:   
+        .endscope
+        .endmacro
+
+
+        .macro unroll_clip_8bits offset
+        .scope
+
+        lda     #$1
+        sta     reg_wmdata_direct
+
+        tya                                   ; a = scrolling coordinate
+        clc
+
+        adc     a:$0 + frame::data + offset, x
+        bcs     _clip4
+        sta     reg_wmdata_direct
+
+        adc     a:$1 + frame::data + offset, x
+        bcs     _clip3
+        sta     reg_wmdata_direct
+
+        adc     a:$2 + frame::data + offset, x
+        bcs     _clip2
+        sta     reg_wmdata_direct
+
+        adc     a:$3 + frame::data + offset, x
         bcs     _clip1
         sta     reg_wmdata_direct
 
@@ -260,15 +347,95 @@ _end:
         .endscope
         .endmacro
 
-        .macro unroll_loop_8bits_40 ofs2
-        unroll_loop_8bits 0 + ofs2
-        unroll_loop_8bits 5 + ofs2
-        unroll_loop_8bits 10 + ofs2
-        unroll_loop_8bits 15 + ofs2
-        unroll_loop_8bits 20 + ofs2
-        unroll_loop_8bits 25 + ofs2
-        unroll_loop_8bits 30 + ofs2
-        unroll_loop_8bits 35 + ofs2
+
+        .macro scanline_group
+        .scope
+
+        tya                                   ; a = scrolling coordinate
+        clc
+        adc     a:$0 + frame::bounds_table_right, x
+        bcs     _clip
+
+        tya
+        adc     a:$0 + frame::bounds_table_left, x
+        bcc     :+
+        jmp     _rightclip
+        :
+        jmp     _noclip
+
+_clip:  
+        phx
+        get_data_address
+
+        clc
+
+        unroll_clip_8bits 0
+        unroll_clip_8bits 5
+        unroll_clip_8bits 10
+        unroll_clip_8bits 15
+        unroll_clip_8bits 20
+        unroll_clip_8bits 25
+        unroll_clip_8bits 30
+        unroll_clip_8bits 35
+        unroll_clip_8bits 40
+        unroll_clip_8bits 45
+        unroll_clip_8bits 50
+        unroll_clip_8bits 55
+        unroll_clip_8bits 60
+        unroll_clip_8bits 65
+        unroll_clip_8bits 70
+        unroll_clip_8bits 75
+
+        plx
+        jmp     _group_end
+
+_rightclip:
+        phx
+        get_data_address
+
+        unroll_rightclip_8bits 0
+        unroll_rightclip_8bits 5
+        unroll_rightclip_8bits 10
+        unroll_rightclip_8bits 15
+        unroll_rightclip_8bits 20
+        unroll_rightclip_8bits 25
+        unroll_rightclip_8bits 30
+        unroll_rightclip_8bits 35
+        unroll_rightclip_8bits 40
+        unroll_rightclip_8bits 45
+        unroll_rightclip_8bits 50
+        unroll_rightclip_8bits 55
+        unroll_rightclip_8bits 60
+        unroll_rightclip_8bits 65
+        unroll_rightclip_8bits 70
+        unroll_rightclip_8bits 75
+
+_noclip:
+        phx
+        get_data_address
+
+        unroll_noclip_8bits 0
+        unroll_noclip_8bits 5
+        unroll_noclip_8bits 10
+        unroll_noclip_8bits 15
+        unroll_noclip_8bits 20
+        unroll_noclip_8bits 25
+        unroll_noclip_8bits 30
+        unroll_noclip_8bits 35
+        unroll_noclip_8bits 40
+        unroll_noclip_8bits 45
+        unroll_noclip_8bits 50
+        unroll_noclip_8bits 55
+        unroll_noclip_8bits 60
+        unroll_noclip_8bits 65
+        unroll_noclip_8bits 70
+        unroll_noclip_8bits 75
+
+        plx
+
+_group_end:
+        inx
+        .endscope
         .endmacro
 
 window_hdma_update_8bits:
@@ -298,7 +465,7 @@ window_hdma_update_8bits:
         pld
 
         ldx     #.loword(data_noname_window)
-
+        phx                                   ; keep a copy of x on the stack for inner loop
 
         ;; no windowing above sprite
 
@@ -313,28 +480,19 @@ window_hdma_update_8bits:
 
         ;; main loop
 
-        unroll_loop_8bits_40 0
-        unroll_loop_8bits_40 40
-        unroll_loop_8bits_40 80
-        unroll_loop_8bits_40 120
-        unroll_loop_8bits_40 160
-        unroll_loop_8bits_40 200
-        unroll_loop_8bits_40 240
-        unroll_loop_8bits_40 280
-        unroll_loop_8bits_40 320
-        unroll_loop_8bits_40 360
-        unroll_loop_8bits_40 400
-        unroll_loop_8bits_40 440
-        unroll_loop_8bits_40 480
-        unroll_loop_8bits_40 520
-        unroll_loop_8bits_40 560
-        unroll_loop_8bits_40 600
-        unroll_loop_8bits_40 640
-        unroll_loop_8bits_40 680
-        unroll_loop_8bits_40 720
-        unroll_loop_8bits_40 760
+_loop:  
+        scanline_group
+        scanline_group
+        scanline_group
+        scanline_group
+        scanline_group
 
+        cpx     #.loword(data_noname_window) + 160 / bounds_group_size
+        bpl     :+
+        jmp     _loop
+        :
 
+        plx
 
         ;; no windowing below sprite
 
