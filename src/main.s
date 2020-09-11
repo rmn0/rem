@@ -365,7 +365,7 @@ _loop:
 
         jsr     light_hdma_update
 
-        jsl     window_hdma_update_8bits
+        jsl     window_hdma_update
 
         jsr     transform_update
 

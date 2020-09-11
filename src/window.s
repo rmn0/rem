@@ -6,17 +6,22 @@
         .include "rem.i"
 
 
-        .define bounds_group_size $10
+        .define bounds_group_size $8
 
         .struct frame
-        width                   .res $2
+        top                     .res $2
         height                  .res $2
-        bounds_table_left       .res $100 / bounds_group_size
-        bounds_table_right      .res $100 / bounds_group_size
+        left                    .res $2
+        right                   .res $2
         data                    .res $1       ;variable length
         .endstruct
 
-        .export window_hdma_setup, window_hdma_update, window_hdma_update_8bits
+        .struct span_group
+        bounds                  .res 4
+        spans                   .res $4 * bounds_group_size
+        .endstruct
+
+        .export window_hdma_setup, window_hdma_update
 
 
         .segment "bss"
@@ -56,392 +61,393 @@ window_hdma_setup:
         rts
 
 
+        .segment "code2"
 
 
-        .macro unroll_loop unroll_offset, unroll_page_offset
+
+        .macro  index
+        lda     #$1
+        sta     reg_wmdata_direct
+        .endmacro
+
+        .macro  noclip xx
+        tya
+        adc     a:xx + frame::data + span_group::spans, x
+        sta     reg_wmdata_direct
+        adc     a:xx + frame::data + span_group::spans + 1, x
+        sta     reg_wmdata_direct
+        .endmacro
+
+        .macro  clip
+        stz     reg_wmdata_direct
+        stz     reg_wmdata_direct
+        .endmacro
+
+
+        ;;
+        ;; no-clipping macros for different situations
+        ;; 
+
+        .macro noclip_both offset
+
+        index
+
+        noclip  $0 + offset
+        noclip  $2 + offset
+
+        .endmacro
+
+
+
+        .macro noclip_one offset
+
+        index
+
+        noclip  $0 + offset
+        clip
+
+        .endmacro
+
+
+
+        ;;
+        ;; clipping macros for different situations
+        ;; 
+
+
+
+        .macro clip_always offset
+
+        index
+
+        clip
+        clip
+
+        .endmacro
+
+
+
+        .macro clip_right offset
         .scope
 
-        tya
-	adc	a:$2 + $4 + unroll_offset, x
-	bpl	_noclip_both
+        index
 
-        bit     #$80
-        bne     _end_second                   ; can be skipped because of prefill
-	ora	#$ff80        
-	sta	unroll_page_offset + $2
-
-_end_second:     
+        noclip  $0 + offset
 
         tya
-	adc	a:$0 + $4 + unroll_offset, x
-	bpl	_noclip_first
 
-        bit     #$80
-        bne     _end_first                    ; can be skipped because of prefill
-	ora	#$ff80
+        adc     a:$2 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        clip
+        clc
+        bra     _end        
+        :
+        sta     reg_wmdata_direct
 
-	sta	unroll_page_offset + $0
+        adc     a:$3 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        lda     #$ff
+        clc
+        :
+        sta     reg_wmdata_direct
 
-        bra     _end_first
-
-_noclip_both:
-	ora	#$8080
-	sta	unroll_page_offset + $2
-
-        tya
-	adc	a:$0 + $4 + unroll_offset, x
-
-_noclip_first:  
-	ora	#$8080
-	sta	unroll_page_offset + $0
-
-_end_first:   
-
+_end:   
         .endscope
         .endmacro
 
 
-        .define page_size 200
 
-        .macro unroll ofs, page_ofs
+        .macro clip_one offset
+        .scope
 
-        lda     #hdma_table + ofs * page_size + 6
-        pha
-        pld
+        index
 
-        unroll_loop   0 + ofs * page_size,   0
-        unroll_loop   5 + ofs * page_size,   5
-        unroll_loop  10 + ofs * page_size,  10
-        unroll_loop  15 + ofs * page_size,  15
-        unroll_loop  20 + ofs * page_size,  20
-        unroll_loop  25 + ofs * page_size,  25
-        unroll_loop  30 + ofs * page_size,  30
-        unroll_loop  35 + ofs * page_size,  35
-        unroll_loop  40 + ofs * page_size,  40
-        unroll_loop  45 + ofs * page_size,  45
-        unroll_loop  50 + ofs * page_size,  50
-        unroll_loop  55 + ofs * page_size,  55
-        unroll_loop  60 + ofs * page_size,  60
-        unroll_loop  65 + ofs * page_size,  65
-        unroll_loop  70 + ofs * page_size,  70
-        unroll_loop  75 + ofs * page_size,  75
-        unroll_loop  80 + ofs * page_size,  80
-        unroll_loop  85 + ofs * page_size,  85
-        unroll_loop  90 + ofs * page_size,  90
-        unroll_loop  95 + ofs * page_size,  95
-        unroll_loop 100 + ofs * page_size, 100
-        unroll_loop 105 + ofs * page_size, 105
-        unroll_loop 110 + ofs * page_size, 110
-        unroll_loop 115 + ofs * page_size, 115
-        unroll_loop 120 + ofs * page_size, 120
-        unroll_loop 125 + ofs * page_size, 125
-        unroll_loop 130 + ofs * page_size, 130
-        unroll_loop 135 + ofs * page_size, 135
-        unroll_loop 140 + ofs * page_size, 140
-        unroll_loop 145 + ofs * page_size, 145
-        unroll_loop 150 + ofs * page_size, 150
-        unroll_loop 155 + ofs * page_size, 155
-        unroll_loop 160 + ofs * page_size, 160
-        unroll_loop 165 + ofs * page_size, 165
-        unroll_loop 170 + ofs * page_size, 170
-        unroll_loop 175 + ofs * page_size, 175
-        unroll_loop 180 + ofs * page_size, 180
-        unroll_loop 185 + ofs * page_size, 185
-        unroll_loop 190 + ofs * page_size, 190
-        unroll_loop 195 + ofs * page_size, 195
+        clip
 
+        tya                                   ; a = scrolling coordinate
+
+        adc     a:$0 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        clip
+        clc
+        bra     _end
+        :
+        sta     reg_wmdata_direct
+
+        adc     a:$1 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        lda     #$ff
+        clc
+        :
+        sta     reg_wmdata_direct
+
+_end:   
+        .endscope
+        .endmacro
+
+
+        .macro clip_both_2 offset                       
+        .scope
+
+        index
+
+        tya
+
+        adc     a:$2 + frame::data + span_group::spans + offset, x
+        bcs     _clip_right
+
+_noclip_right:  
+
+        sta     reg_wmdata_direct
+
+        adc     a:$3 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        lda     #$ff
+        clc
+        :
+        sta     reg_wmdata_direct
+
+        noclip  $0 + offset
+
+        bra     _end
+
+_clip_right:
+
+        clip
+
+        tya
+        clc
+
+        adc     a:$0 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        clip
+        clc
+        bra     _end
+        :
+
+        sta     reg_wmdata_direct
+
+        adc     a:$1 + frame::data + span_group::spans + offset, x
+        bcc     :+
+        lda     #$ff
+        clc
+        :
+        sta     reg_wmdata_direct
+
+_end:   
+        .endscope
+        .endmacro
+
+
+        .macro clip_both offset                       
+        .scope
+
+        index
+
+        tya
+        clc
+
+        adc     a:$0 + frame::data + span_group::spans + offset, x
+        bcs     _clip4
+        sta     reg_wmdata_direct
+
+        adc     a:$1 + frame::data + span_group::spans + offset, x
+        bcs     _clip3
+        sta     reg_wmdata_direct
+
+        tya
+
+        adc     a:$2 + frame::data + span_group::spans + offset, x
+        bcs     _clip2
+        sta     reg_wmdata_direct
+
+        adc     a:$3 + frame::data + span_group::spans + offset, x
+        bcs     _clip1
+        sta     reg_wmdata_direct
+
+        bra     _end
+
+_clip4:
+        clip
+_clip2:
+        clip
+        bra     _end
+
+_clip3: 
+        lda     #$ff
+        sta     reg_wmdata_direct
+        clip
+        bra     _end
+
+_clip1: 
+        lda     #$ff
+        sta     reg_wmdata_direct
+
+_end:   
+        .endscope
+        .endmacro
+
+
+
+        ;;
+        ;; loop unrolling
+        ;;
+
+
+
+        .macro unroll mm, unroll_ofs
+
+        mm      $0 + unroll_ofs
+        mm      $4 + unroll_ofs
+        mm      $8 + unroll_ofs
+        mm      $c + unroll_ofs
+        mm      $10 + unroll_ofs
+        mm      $14 + unroll_ofs
+        mm      $18 + unroll_ofs
+        mm      $1c + unroll_ofs
+        ;; mm      $20 + unroll_ofs
+        ;; mm      $24 + unroll_ofs
+        ;; mm      $28 + unroll_ofs
+        ;; mm      $2c + unroll_ofs
+        ;; mm      $30 + unroll_ofs
+        ;; mm      $34 + unroll_ofs
+        ;; mm      $38 + unroll_ofs
+        ;; mm      $3c + unroll_ofs
+
+        .endmacro
+
+
+
+        ;;
+        ;; scanline group no-clipping macros
+        ;;
+
+
+
+        .macro scanline_group_noclip group_ofs
+        .scope
+
+        lda     a:$2 + frame::data + span_group::bounds + group_ofs, x
+        cmp     #$ff
+        beq     :+
+        jmp     _noclip_both
+        :
+
+        unroll  noclip_one, group_ofs
+        jmp     _group_end
+
+_noclip_both:
+        unroll  noclip_both, group_ofs
+
+_group_end:   
+        .endscope
+        .endmacro
+
+
+
+        ;;
+        ;; scaline group clipping macros
+        ;;
+
+
+
+        .macro scanline_group group_ofs
+        .scope
+
+        clc
+
+        tya                                   
+        adc     a:$0 + frame::data + span_group::bounds + group_ofs, x
+        bcc     :+
+        ;; this group is completely outside the screen
+        clc
+        jmp     _clip_always
+        :
+
+        tya
+        adc     a:$2 + frame::data + span_group::bounds + group_ofs, x
+        bcc     :+
+        ;; all the right spans in this group are completely outside the screen
+        ;; or the group only has the left spans
+        clc
+        jmp     _test_left
+        :
+
+        tya
+        adc     a:$1 + frame::data + span_group::bounds + group_ofs, x
+        bcs     :+
+        ;; all the left spans in this group are completely inside the screen
+        jmp     _test_right
+        :
+        clc
+
+        tya
+        adc     a:$3 + frame::data + span_group::bounds + group_ofs, x
+        bcc     :+
+        ;; we do not know whether any of the left or right spans will clip
+        clc
+        jmp     _clip_both
+        :
+
+        ;; all spans in this group are completely inside the screen
+        jmp     _noclip_both
+
+_test_right:
+        tya
+        adc     a:$3 + frame::data + span_group::bounds + group_ofs, x
+        bcc     :+
+        ;; we do not know whether any of the right spans will clip
+        ;; but the left spans are completely inside the screen
+        clc
+        jmp     _clip_right
+        :
+
+        ;; all spans in this group are completely inside the screen
+        jmp     _noclip_both
+
+
+_test_left:      
+        tya
+        adc     a:$1 + frame::data + span_group::bounds + group_ofs, x
+        bcc     :+
+        ;; this group only has the left spans and we do not know if they clip
+        jmp     _clip_one
+        :
+
+        ;; this group only has the left span and is completely inside the screen
+
+_noclip_one:    
+        unroll  noclip_one, group_ofs
+        jmp     _group_end
+        
+_clip_one:      
+        unroll  clip_one, group_ofs
+        jmp     _group_end
+
+_clip_right:    
+        unroll  clip_right, group_ofs
+        jmp     _group_end
+
+_clip_always:
+        unroll  clip_always, group_ofs
+        jmp     _group_end
+
+_clip_both:
+        unroll  clip_both, group_ofs
+        jmp     _group_end
+
+_noclip_both:
+        unroll  noclip_both, group_ofs
+
+
+_group_end:
+        .endscope
         .endmacro
 
 
 
 
 window_hdma_update:
-
-        ;; prefill dma table
-
-        dma_wram_memcpy $0, #.loword(hdma_table), #^hdma_table, #.loword(prefill), #^prefill, #164 * 5
-
-        ;; setup scrolling
-
-        lda     frame_counter
-        and     #$7f
-        xba
-        lda     frame_counter
-        and     #$7f
-        tay
-
-        ;; vertical position
-
-        lda     f:data_noname_window
-        sta     hdma_table
-
-        ;; setup bank register to point at the window data
-
-        lda     #^data_noname_window
-        pha
-        plb
-
-        ldx     #.loword(data_noname_window)
-
-
-        ;; main loop
-
-        sa16
-        clc                                   ; nothing should ever set the carry in this loop
-
-        unroll  0
-        unroll  1
-        unroll  2
-        unroll  3
-
-
-        sa8
-        stz     hdma_table + 5 + 164 * 5             ; flag end of dma table
-
-        ;; restore direct page and bank registers
-
-        lda     #$80
-        pha
-        plb
-
-        ldx     #$00
-        phx
-        pld
-
-        rts
-
-
-        .segment "code2"
-
-
-        .macro get_data_address
-
-        sa16
-
-        lda     3, s
-        tax
-        clc
-        adc     #80
-        sta     3, s
-
-        sa8
-
-        .endmacro
-
-
-        .macro unroll_noclip_8bits offset
-
-        lda     #$1
-        sta     reg_wmdata_direct
-
-        tya
-
-        adc     a:$0 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        adc     a:$1 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        adc     a:$2 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        adc     a:$3 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        .endmacro
-
-
-        .macro unroll_rightclip_8bits offset
-        .scope
-
-        lda     #$1
-        sta     reg_wmdata_direct
-
-        tya                                   ; a = scrolling coordinate
-        clc
-
-        adc     a:$0 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        adc     a:$1 + frame::data + offset, x
-        sta     reg_wmdata_direct
-
-        adc     a:$2 + frame::data + offset, x
-        bcs     _clip2
-        sta     reg_wmdata_direct
-
-        adc     a:$3 + frame::data + offset, x
-        bcs     _clip1
-        sta     reg_wmdata_direct
-
-        bra     _end
-
-_clip2: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        bra     _end
-
-_clip1: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-
-_end:   
-        .endscope
-        .endmacro
-
-
-        .macro unroll_clip_8bits offset
-        .scope
-
-        lda     #$1
-        sta     reg_wmdata_direct
-
-        tya                                   ; a = scrolling coordinate
-        clc
-
-        adc     a:$0 + frame::data + offset, x
-        bcs     _clip4
-        sta     reg_wmdata_direct
-
-        adc     a:$1 + frame::data + offset, x
-        bcs     _clip3
-        sta     reg_wmdata_direct
-
-        adc     a:$2 + frame::data + offset, x
-        bcs     _clip2
-        sta     reg_wmdata_direct
-
-        adc     a:$3 + frame::data + offset, x
-        bcs     _clip1
-        sta     reg_wmdata_direct
-
-        bra     _end
-
-_clip4: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        bra     _end
-
-_clip3: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        bra     _end
-
-_clip2: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-        sta     reg_wmdata_direct
-        bra     _end
-
-_clip1: 
-        lda     #$ff
-        sta     reg_wmdata_direct
-
-_end:   
-        .endscope
-        .endmacro
-
-
-        .macro scanline_group
-        .scope
-
-        tya
-        adc     a:$0 + frame::bounds_table_left, x
-        bcc     :+
-        jmp     _clip
-        :
-
-        tya                                   ; a = scrolling coordinate
-        clc
-        adc     a:$0 + frame::bounds_table_right, x
-        bcs     _rightclip
-
-        jmp     _noclip
-
-_rightclip:
-
-        phx
-        get_data_address
-
-        unroll_rightclip_8bits 0
-        unroll_rightclip_8bits 5
-        unroll_rightclip_8bits 10
-        unroll_rightclip_8bits 15
-        unroll_rightclip_8bits 20
-        unroll_rightclip_8bits 25
-        unroll_rightclip_8bits 30
-        unroll_rightclip_8bits 35
-        unroll_rightclip_8bits 40
-        unroll_rightclip_8bits 45
-        unroll_rightclip_8bits 50
-        unroll_rightclip_8bits 55
-        unroll_rightclip_8bits 60
-        unroll_rightclip_8bits 65
-        unroll_rightclip_8bits 70
-        unroll_rightclip_8bits 75
-
-        plx
-        jmp     _group_end
-
-_clip:  
-        phx
-        get_data_address
-
-        unroll_clip_8bits 0
-        unroll_clip_8bits 5
-        unroll_clip_8bits 10
-        unroll_clip_8bits 15
-        unroll_clip_8bits 20
-        unroll_clip_8bits 25
-        unroll_clip_8bits 30
-        unroll_clip_8bits 35
-        unroll_clip_8bits 40
-        unroll_clip_8bits 45
-        unroll_clip_8bits 50
-        unroll_clip_8bits 55
-        unroll_clip_8bits 60
-        unroll_clip_8bits 65
-        unroll_clip_8bits 70
-        unroll_clip_8bits 75
-
-        plx
-        jmp     _group_end
-
-_noclip:
-        phx
-        get_data_address
-
-        unroll_noclip_8bits 0
-        unroll_noclip_8bits 5
-        unroll_noclip_8bits 10
-        unroll_noclip_8bits 15
-        unroll_noclip_8bits 20
-        unroll_noclip_8bits 25
-        unroll_noclip_8bits 30
-        unroll_noclip_8bits 35
-        unroll_noclip_8bits 40
-        unroll_noclip_8bits 45
-        unroll_noclip_8bits 50
-        unroll_noclip_8bits 55
-        unroll_noclip_8bits 60
-        unroll_noclip_8bits 65
-        unroll_noclip_8bits 70
-        unroll_noclip_8bits 75
-
-        plx
-
-_group_end:
-        inx
-        .endscope
-        .endmacro
-
-window_hdma_update_8bits:
 
         ;; setup scrolling
 
@@ -468,7 +474,6 @@ window_hdma_update_8bits:
         pld
 
         ldx     #.loword(data_noname_window)
-        phx                                   ; keep a copy of x on the stack for inner loop
 
         ;; no windowing above sprite
 
@@ -480,22 +485,50 @@ window_hdma_update_8bits:
         stz     reg_wmdata_direct
         stz     reg_wmdata_direct
 
+        tya
+        clc
+        adc     a:$0 + frame::right, x
+        bcc     _loop_noclip
+        jmp     _loop_clip
+
+
+_loop_noclip:
+        scanline_group_noclip 0 * .sizeof(span_group)
+        scanline_group_noclip 1 * .sizeof(span_group)
+
+        sa16
+        txa
+        clc
+        adc     #2 * .sizeof(span_group)
+        tax
+        sa8
+
+        cpx     #.loword(data_noname_window) + 20 * .sizeof(span_group)
+        bpl     :+
+        jmp     _loop_noclip
+        :
+
+        jmp     _end
 
         ;; main loop
 
-_loop:  
-        scanline_group
-        scanline_group
-        scanline_group
-        scanline_group
-        scanline_group
+_loop_clip:
+        scanline_group 0 * .sizeof(span_group)
+        scanline_group 1 * .sizeof(span_group)
 
-        cpx     #.loword(data_noname_window) + 160 / bounds_group_size
+        sa16
+        txa
+        clc
+        adc     #2 * .sizeof(span_group)
+        tax
+        sa8
+
+        cpx     #.loword(data_noname_window) + 20 * .sizeof(span_group)
         bpl     :+
-        jmp     _loop
+        jmp     _loop_clip
         :
 
-        plx
+_end:
 
         ;; no windowing below sprite
 

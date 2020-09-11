@@ -6,8 +6,17 @@
 
 #include "imgheader.h"
 
-#define NSPANS 5
-#define BOUNDING_BOX_HEIGHT 16
+#define NSPANS 4
+#define BOUNDING_BOX_HEIGHT 8
+#define BOUNDING_BOX_ENTRIES 4
+
+void flip(unsigned char* a, unsigned char* b)
+{
+  unsigned char t;
+  t = *a;
+  *a = *b;
+  *b = t;
+}
 
 int main(int argc, char *argv[])
 {
@@ -57,8 +66,7 @@ int main(int argc, char *argv[])
   fread(buffer, 1, fh.w * fh.h, fi);
 
   unsigned char* spantable = malloc(fh.h * NSPANS);
-  unsigned char boxtable[(256 / BOUNDING_BOX_HEIGHT) * 2];
-  unsigned char spanmax[256];
+  unsigned char boxtable[(256 / BOUNDING_BOX_HEIGHT) * BOUNDING_BOX_ENTRIES];
 
   unsigned short firstline = 0xff;
   unsigned short linecount = 0xff;
@@ -79,8 +87,7 @@ int main(int argc, char *argv[])
           fprintf(stderr, "too many spans in scanline %i", yy);
           return 1;
         }
-        //spantable[yy * NSPANS + span] = xx; // 16-bit version
-        spantable[yy * NSPANS + span] = xx - lastxx; // 8-bit version
+        spantable[yy * NSPANS + span] = xx;
         lastxx = xx;
         ++span;
       }
@@ -88,49 +95,82 @@ int main(int argc, char *argv[])
     }
 
     if(span == 2) {
-      // setup up the unneeded span so that it will clip early
-      //spantable[yy * NSPANS + 2] = 0x7f; //spantable[yy * NSPANS + 0];
-      //spantable[yy * NSPANS + 3] = 0x7f; //spantable[yy * NSPANS + 1];
-
       spantable[yy * NSPANS + 2] = 0;
       spantable[yy * NSPANS + 3] = 0;
     }
-
-    spanmax[yy] = lastxx;
 
     if(firstline == 0xff && span > 0) firstline = yy;
     if(span > 0) linecount = yy + 1 - firstline;
   }
 
+  for(int yy = firstline + linecount; yy < firstline + linecount + BOUNDING_BOX_HEIGHT; ++yy) {
+    spantable[yy * NSPANS + 0] = spantable[(yy - 1) * NSPANS + 0];
+    spantable[yy * NSPANS + 1] = spantable[(yy - 1) * NSPANS + 1];
+    spantable[yy * NSPANS + 2] = spantable[(yy - 1) * NSPANS + 2];
+    spantable[yy * NSPANS + 3] = spantable[(yy - 1) * NSPANS + 3];
+  }
+
+
+  unsigned char right = 0;
+
   for(int yy = 0; yy < fh.h / BOUNDING_BOX_HEIGHT; ++yy) {
-    int lmax = 0, rmax = 0;
+    int l1min = 255, l2max = 0, r1min = 255, r2max = 0;
+    int hasright = 0;
     for(int yy2 = 0; yy2 < BOUNDING_BOX_HEIGHT; ++yy2) {
       int llyy = (yy * BOUNDING_BOX_HEIGHT) + yy2 + firstline;
       if(llyy >= firstline + linecount) llyy = firstline + linecount - 1;
 
-      int l = spantable[llyy * NSPANS + 0] + spantable[llyy * NSPANS + 1];
-      int r = spanmax[llyy];
+      int l1 = spantable[llyy * NSPANS + 0];
+      int l2 = spantable[llyy * NSPANS + 1];
+      int r1 = spantable[llyy * NSPANS + 2];
+      int r2 = spantable[llyy * NSPANS + 3];
 
-      if(l > lmax) lmax = l;
-      if(r > rmax) rmax = r;
+      if(l1 < l1min) l1min = l1;
+      if(l2 > l2max) l2max = l2;
+
+      if(r1 > 0 && r1 < r1min) r1min = r1;
+      if(r2 > 0 && r2 > r2max) r2max = r2;
     }
-    boxtable[yy] = lmax;
-    boxtable[yy + 256 / BOUNDING_BOX_HEIGHT] = rmax;
+
+    if(l2max > r2max) r2max = l2max;
+
+    boxtable[yy * BOUNDING_BOX_ENTRIES + 0] = l1min;
+    boxtable[yy * BOUNDING_BOX_ENTRIES + 1] = l2max;
+    boxtable[yy * BOUNDING_BOX_ENTRIES + 2] = r1min;
+    boxtable[yy * BOUNDING_BOX_ENTRIES + 3] = r2max;
+
+    if(l2max > right) right = l2max;
+    if(r2max > right) right = r2max;
+
+    if(verbose) printf("%i, %i, %i, %i\n", l1min, l2max, r1min, r2max);
+  }
+
+  // make relative offsets
+  for(int yy = firstline; yy < firstline + linecount + BOUNDING_BOX_HEIGHT; ++yy) {
+    if(spantable[yy * NSPANS + 2] == 0) {
+      spantable[yy * NSPANS + 3] = spantable[yy * NSPANS + 1];
+      spantable[yy * NSPANS + 2] = spantable[yy * NSPANS + 0];
+    }
+
+    spantable[yy * NSPANS + 3] -= spantable[yy * NSPANS + 2];
+    spantable[yy * NSPANS + 1] -= spantable[yy * NSPANS + 0];
   }
 
 
   FILE *fo = fo = fopen(outfile, "wb");
 
-  if(verbose) printf("start line = %i, line count = %i\n", firstline, linecount);
-
-  linecount *= NSPANS;
+  if(verbose) printf("start line = %i, line count = %i, groups = %i\n",
+                     firstline, linecount,  linecount / BOUNDING_BOX_HEIGHT + 1);
 
   fwrite(&firstline, 1, 2, fo);
   fwrite(&linecount, 1, 2, fo);
+  fwrite(&right, 1, 2, fo);
+  fwrite(&right, 1, 2, fo);
 
-  fwrite(boxtable, 1, (256 / BOUNDING_BOX_HEIGHT) * 2, fo);
-
-  fwrite(&spantable[firstline * NSPANS], 1, linecount, fo);
+  for(int yy = 0; yy <= linecount / BOUNDING_BOX_HEIGHT; ++yy) {
+    fwrite(&boxtable[yy * BOUNDING_BOX_ENTRIES], 1, BOUNDING_BOX_ENTRIES, fo);
+    fwrite(&spantable[(firstline + yy * BOUNDING_BOX_HEIGHT) * NSPANS], 1, BOUNDING_BOX_HEIGHT * NSPANS, fo);
+  }
 
   fclose(fo);
 
