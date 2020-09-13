@@ -23,7 +23,8 @@ memory {
 #       rom10:	start = $D00000, size = $10000, fill = yes;
 
        zpage:	start = $0000, size = $100;	# 8k loram
-       loram:	start = $0100, size = $1f00;	#
+       hdma:	start = $0100, size = $100;	#
+       loram:	start = $0200, size = $1e00;	#
        hiram1:	start = $7E2000, size = $e000;	# 56k hiram1
        hiram2:	start = $7F0000, size = $10000;	# 64k hiram2
 
@@ -34,8 +35,9 @@ segments {
        code:		load = crom, type = ro;		# 32k code
        xcode:		load = hrom, type = ro, optional = yes;		# 32k xcode
        header:		load = chead, type = ro;	# cartridge header
-       zeropage:	load = zpage, type = zp, optional = yes;	# zero page
-       bss:		load = loram, type = bss, optional = yes;	# 8k (minus zpage) bss
+       zeropage:	load = zpage, type = zp, optional = yes;
+       hdma:		load = hdma, type = bss, optional = yes;
+       bss:		load = loram, type = bss, optional = yes;
        rodata:		load = rom1, type = ro, optional = yes;		# some rodata...
 
        hram:		load = hiram1, type = bss, optional = yes, align = $100;	# 56K+64K HRAM

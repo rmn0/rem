@@ -11,6 +11,7 @@
 
         .import start_
         .import nmi_
+        .import irq_
 
         ;; header
 
@@ -40,7 +41,7 @@
         .word $0                         ; abort
         .word nmi_                      ; nmi
         .word $0                         ; reset
-        .word $0                         ; irq
+        .word irq_                       ; irq
 
         ;; emulation mode vectors
 

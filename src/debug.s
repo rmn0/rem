@@ -270,13 +270,13 @@ debug_dma:
 
 debug_enable_hdma:
 
-        hdma    $1, #.lobyte(reg_bgxsc + $2) * $100 + $0, hdma_table_bg2sc
-        hdma    $2, #.lobyte(reg_tm) * $100 + $0, hdma_table_tm
-        hdma    $3, #.lobyte(reg_ts) * $100 + $0, hdma_table_ts
-        hdma    $4, #.lobyte(reg_bgxhofs + $2 * $2) * $100 + $3, hdma_table_bg2xofs
+        hdma    $4, #.lobyte(reg_bgxsc + $2) * $100 + $0, hdma_table_bg2sc
+        hdma    $5, #.lobyte(reg_tm) * $100 + $0, hdma_table_tm
+        hdma    $6, #.lobyte(reg_ts) * $100 + $0, hdma_table_ts
+        hdma    $7, #.lobyte(reg_bgxhofs + $2 * $2) * $100 + $3, hdma_table_bg2xofs
         ;; hdma    $5, #.lobyte(reg_bg34nba) * $100 + $0, hdma_table_bg34nba
 
-        lda     #$1e
+        lda     #$f0
         sta     reg_hdmaen
 
         rts
@@ -287,6 +287,10 @@ debug_enable_hdma:
 debug_disable_hdma:
 
         stz     reg_hdmaen
+
+        ;; restore hdma settings
+
+        jsr     window_hdma_setup
 
         rts
 

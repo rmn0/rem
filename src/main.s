@@ -318,7 +318,8 @@ title_screen:
 
         jsr     sound_test_2
 
-        jsr     light_setup
+        jsr     light_hdma_setup
+        jsr     window_hdma_setup
 
         ;; dma_vram_memseth $00, #vram::bg2, #$00, #($20 * $1d)
 
@@ -332,15 +333,20 @@ title_screen:
 ;;; main loop
 
 _loop:
-        lda     #$01
-        sta     reg_nmitimen
-
         ;; if debug is enabled, update the debug area ram buffer
 
         lda     is_debug
         bit     #$1
         beq     :+
         jsr     debug_update
+        bra     :++
+        :
+
+        ;; use hdma only if debug is deactivated
+
+        lda     #$08
+        sta     reg_hdmaen
+        jsr     window_irq_update
         :
 
         sa16
@@ -357,11 +363,15 @@ _loop:
 
         sa8
 
-        ;; call main update routines
+        ;; call time-critical update routines
 
-        jsr     light_hdma
+        jsr     light_hdma_update
 
         jsr     transform_update
+
+        jsr     window_hdma_update
+
+        ;; call main update routines
 
         jsr     rem_sprite_update
 

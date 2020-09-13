@@ -82,6 +82,7 @@
         reg_a1tx	= $4302	; DMA Source Address			2B/W
         reg_a1bx	= $4304	; Source Bank Address			1B/W
         reg_dasx	= $4305	; DMA Transfer size/HDMA Address	2B/W
+        reg_a2ax	= $4308	
         reg_nltrx	= $430a	; Number Of Lines For HDMA		1B/W
 
         REG_FBNANACNT	= $FEED	; Felon's Banana Register		1B/RW

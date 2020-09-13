@@ -15,3 +15,16 @@
 
         .endmacro
 
+
+        .macro read_vcounter_far
+
+        lda     f:reg_stat78
+        lda     f:reg_slhv
+        lda     f:reg_opvct
+        xba
+        lda     f:reg_opvct
+        and     #$1
+        xba
+
+        .endmacro
+
